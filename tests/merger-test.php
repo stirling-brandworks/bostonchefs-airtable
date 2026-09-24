@@ -126,6 +126,13 @@ expect( ! $bad_url['ok'] && 'cta_url' === $bad_url['field'], 'unsafe urls are re
 $good_url = $merger->parse_payload( $base + array( 'cta_url' => 'https://example.com/order' ) );
 expect( true === $good_url['ok'] && 'https://example.com/order' === $good_url['changes']['cta_url'], 'http urls are accepted' );
 
+$alt_url = $merger->parse_payload( $base + array( 'alternative_reservation_url' => 'https://example.com/reserve-alt' ) );
+expect( true === $alt_url['ok'] && 'https://example.com/reserve-alt' === $alt_url['changes']['alternative_reservation_url'], 'alternative reservation url is accepted' );
+
+$applied_alt = $merger->apply( $existing, $alt_url['changes'] );
+expect( 'https://example.com/reserve-alt' === $applied_alt['rundown']['alternative_reservation_url'], 'alternative reservation url is stored' );
+expect( 'https://resy.com/example' === $applied_alt['rundown']['reservation_url'], 'reservation url stays under WordPress' );
+
 $spaces = $merger->parse_payload( $base + array( 'availability' => '   ' ) );
 expect( true === $spaces['ok'] && array() === $spaces['changes'], 'whitespace-only values are ignored' );
 

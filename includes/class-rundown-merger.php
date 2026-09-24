@@ -13,12 +13,13 @@ namespace BostonChefs\Airtable;
 class Rundown_Merger {
 
 	const MANAGED_FIELDS = array(
-		'title'        => 'text',
-		'blurb'        => 'textarea',
-		'availability' => 'text',
-		'price'        => 'text',
-		'cta_text'     => 'text',
-		'cta_url'      => 'url',
+		'title'                       => 'text',
+		'blurb'                       => 'textarea',
+		'availability'                => 'text',
+		'price'                       => 'text',
+		'cta_text'                    => 'text',
+		'cta_url'                     => 'url',
+		'alternative_reservation_url' => 'url',
 	);
 
 	const PRESERVED_FIELDS = array(
