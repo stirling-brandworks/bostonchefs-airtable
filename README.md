@@ -66,6 +66,7 @@ Create the restaurant and the rundown term in WordPress before calling this endp
 | `price` | `price` |
 | `cta_text` | `cta_text` |
 | `cta_url` | `cta_url` |
+| `show_reservation_url` | `show_reservation_url` |
 | `alternative_reservation_url` | `alternative_reservation_url` |
 
 Values are written to the existing `rundown_{term_id}` post meta array on the restaurant. WordPress serializes that array. The Airtable record ID is stored separately as `_bc_airtable_rundown_{term_id}` so a later edit in WordPress admin does not drop it.
@@ -76,15 +77,16 @@ These stay under WordPress control. Sending any of them returns an error and cha
 
 - `image` (Rundown Image)
 - `menu` (Associated Menu)
-- `show_reservation_url` (Show Reservation URL)
-- `reservation_url` (Alternative Reservation URL)
+- `reservation_url` (Reservation URL)
 
 ### Value rules
 
 - Field omitted → leave the current WordPress value unchanged
-- Field `null` → clear the WordPress value
+- Field `null` → clear the WordPress value. For `show_reservation_url`, null stores `false`
 - Field blank or whitespace → leave the current WordPress value unchanged
 - Field has a value → update the WordPress value
+
+`show_reservation_url` accepts only `true`, `false`, or `null`.
 
 Sending the same payload again is safe. A repeat with no differences returns success and an empty `updated_fields` list.
 
@@ -101,6 +103,7 @@ Sending the same payload again is safe. A repeat with no differences returns suc
   "price": "$95",
   "cta_text": "Reserve a table",
   "cta_url": "https://example.com/reserve",
+  "show_reservation_url": true,
   "alternative_reservation_url": "https://example.com/reserve-alt"
 }
 ```
@@ -115,7 +118,7 @@ Success:
   "rundown_assigned": false,
   "airtable_record_id": "recABCDEFGHIJKLMN",
   "meta_key": "rundown_456",
-  "updated_fields": ["title", "blurb", "availability", "price", "cta_text", "cta_url", "alternative_reservation_url"],
+  "updated_fields": ["title", "blurb", "availability", "price", "cta_text", "cta_url", "show_reservation_url", "alternative_reservation_url"],
   "message": "Rundown successfully synced.",
   "url": "https://example.com/holiday/christmas/#restaurant-slug"
 }

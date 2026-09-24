@@ -126,6 +126,18 @@ expect( ! $bad_url['ok'] && 'cta_url' === $bad_url['field'], 'unsafe urls are re
 $good_url = $merger->parse_payload( $base + array( 'cta_url' => 'https://example.com/order' ) );
 expect( true === $good_url['ok'] && 'https://example.com/order' === $good_url['changes']['cta_url'], 'http urls are accepted' );
 
+$show = $merger->parse_payload( $base + array( 'show_reservation_url' => false ) );
+expect( true === $show['ok'] && false === $show['changes']['show_reservation_url'], 'show reservation flag is accepted' );
+
+$applied_show = $merger->apply( $existing, $show['changes'] );
+expect( false === $applied_show['rundown']['show_reservation_url'], 'show reservation flag is updated' );
+
+$cleared_show = $merger->apply( $existing, array( 'show_reservation_url' => null ) );
+expect( false === $cleared_show['rundown']['show_reservation_url'], 'null show reservation flag stores false' );
+
+$bad_show = $merger->parse_payload( $base + array( 'show_reservation_url' => 'yes' ) );
+expect( ! $bad_show['ok'] && 'show_reservation_url' === $bad_show['field'], 'show reservation flag must be boolean' );
+
 $alt_url = $merger->parse_payload( $base + array( 'alternative_reservation_url' => 'https://example.com/reserve-alt' ) );
 expect( true === $alt_url['ok'] && 'https://example.com/reserve-alt' === $alt_url['changes']['alternative_reservation_url'], 'alternative reservation url is accepted' );
 

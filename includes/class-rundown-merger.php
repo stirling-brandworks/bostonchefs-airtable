@@ -19,13 +19,13 @@ class Rundown_Merger {
 		'price'                       => 'text',
 		'cta_text'                    => 'text',
 		'cta_url'                     => 'url',
+		'show_reservation_url'        => 'boolean',
 		'alternative_reservation_url' => 'url',
 	);
 
 	const PRESERVED_FIELDS = array(
 		'image',
 		'menu',
-		'show_reservation_url',
 		'reservation_url',
 	);
 
@@ -139,7 +139,11 @@ class Rundown_Merger {
 				continue;
 			}
 
-			$new_value = null === $changes[ $field ] ? '' : $changes[ $field ];
+			if ( null === $changes[ $field ] ) {
+				$new_value = ( 'boolean' === $type ) ? false : '';
+			} else {
+				$new_value = $changes[ $field ];
+			}
 			$current   = array_key_exists( $field, $rundown ) ? $rundown[ $field ] : null;
 
 			if ( $current === $new_value ) {
@@ -225,7 +229,7 @@ class Rundown_Merger {
 
 	/**
 	 * @param string $field Field name.
-	 * @param string $type  text, textarea, or url.
+	 * @param string $type  text, textarea, url, or boolean.
 	 * @param mixed  $value Raw JSON value.
 	 * @return array
 	 */
@@ -234,6 +238,21 @@ class Rundown_Merger {
 			return array(
 				'apply' => true,
 				'value' => null,
+			);
+		}
+
+		if ( 'boolean' === $type ) {
+			if ( ! is_bool( $value ) ) {
+				return $this->failure(
+					'bc_airtable_invalid_field',
+					sprintf( '%s must be true, false, or null.', $field ),
+					$field
+				);
+			}
+
+			return array(
+				'apply' => true,
+				'value' => $value,
 			);
 		}
 
