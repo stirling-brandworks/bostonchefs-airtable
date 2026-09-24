@@ -114,8 +114,8 @@ expect( ! $preserved['ok'] && 'bc_airtable_preserved_field' === $preserved['code
 $menu = $merger->parse_payload( $base + array( 'menu' => 5 ) );
 expect( ! $menu['ok'] && 'menu' === $menu['field'], 'menu updates are rejected' );
 
-$reservation = $merger->parse_payload( $base + array( 'reservation_url' => 'https://example.com' ) );
-expect( ! $reservation['ok'] && 'reservation_url' === $reservation['field'], 'reservation url updates are rejected' );
+$reservation = $merger->parse_payload( $base + array( 'reservation_url' => 'https://example.com/direct' ) );
+expect( true === $reservation['ok'] && 'https://example.com/direct' === $reservation['changes']['reservation_url'], 'reservation url updates are accepted' );
 
 $unknown = $merger->parse_payload( $base + array( 'notes' => 'hello' ) );
 expect( ! $unknown['ok'] && 'bc_airtable_unknown_field' === $unknown['code'], 'unknown fields are rejected' );
@@ -139,11 +139,19 @@ $bad_show = $merger->parse_payload( $base + array( 'show_reservation_url' => 'ye
 expect( ! $bad_show['ok'] && 'show_reservation_url' === $bad_show['field'], 'show reservation flag must be boolean' );
 
 $alt_url = $merger->parse_payload( $base + array( 'alternative_reservation_url' => 'https://example.com/reserve-alt' ) );
-expect( true === $alt_url['ok'] && 'https://example.com/reserve-alt' === $alt_url['changes']['alternative_reservation_url'], 'alternative reservation url is accepted' );
+expect( true === $alt_url['ok'] && 'https://example.com/reserve-alt' === $alt_url['changes']['reservation_url'], 'alternative reservation url maps to reservation_url' );
 
 $applied_alt = $merger->apply( $existing, $alt_url['changes'] );
-expect( 'https://example.com/reserve-alt' === $applied_alt['rundown']['alternative_reservation_url'], 'alternative reservation url is stored' );
-expect( 'https://resy.com/example' === $applied_alt['rundown']['reservation_url'], 'reservation url stays under WordPress' );
+expect( 'https://example.com/reserve-alt' === $applied_alt['rundown']['reservation_url'], 'alternative reservation url is stored on reservation_url' );
+expect( ! array_key_exists( 'alternative_reservation_url', $applied_alt['rundown'] ), 'alternative reservation url is not stored under its Airtable name' );
+
+$both_urls = $merger->parse_payload(
+	$base + array(
+		'alternative_reservation_url' => 'https://example.com/a',
+		'reservation_url'             => 'https://example.com/b',
+	)
+);
+expect( ! $both_urls['ok'] && 'alternative_reservation_url' === $both_urls['field'], 'reservation url aliases cannot both be sent' );
 
 $spaces = $merger->parse_payload( $base + array( 'availability' => '   ' ) );
 expect( true === $spaces['ok'] && array() === $spaces['changes'], 'whitespace-only values are ignored' );

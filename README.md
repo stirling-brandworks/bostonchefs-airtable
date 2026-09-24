@@ -67,7 +67,7 @@ Create the restaurant and the rundown term in WordPress before calling this endp
 | `cta_text` | `cta_text` |
 | `cta_url` | `cta_url` |
 | `show_reservation_url` | `show_reservation_url` |
-| `alternative_reservation_url` | `alternative_reservation_url` |
+| `alternative_reservation_url` | `reservation_url` |
 
 Values are written to the existing `rundown_{term_id}` post meta array on the restaurant. WordPress serializes that array. The Airtable record ID is stored separately as `_bc_airtable_rundown_{term_id}` so a later edit in WordPress admin does not drop it.
 
@@ -77,7 +77,8 @@ These stay under WordPress control. Sending any of them returns an error and cha
 
 - `image` (Rundown Image)
 - `menu` (Associated Menu)
-- `reservation_url` (Reservation URL)
+
+`alternative_reservation_url` is the Airtable name for the WordPress field `reservation_url`. Sending `reservation_url` writes that same field. Send only one of those keys.
 
 ### Value rules
 
@@ -118,7 +119,7 @@ Success:
   "rundown_assigned": false,
   "airtable_record_id": "recABCDEFGHIJKLMN",
   "meta_key": "rundown_456",
-  "updated_fields": ["title", "blurb", "availability", "price", "cta_text", "cta_url", "show_reservation_url", "alternative_reservation_url"],
+  "updated_fields": ["title", "blurb", "availability", "price", "cta_text", "cta_url", "show_reservation_url", "reservation_url"],
   "message": "Rundown successfully synced.",
   "url": "https://example.com/holiday/christmas/#restaurant-slug"
 }

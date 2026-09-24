@@ -19,14 +19,20 @@ class Rundown_Merger {
 		'price'                       => 'text',
 		'cta_text'                    => 'text',
 		'cta_url'                     => 'url',
-		'show_reservation_url'        => 'boolean',
-		'alternative_reservation_url' => 'url',
+		'show_reservation_url' => 'boolean',
+		'reservation_url'      => 'url',
+	);
+
+	/**
+	 * Airtable payload keys that store into a different WordPress meta key.
+	 */
+	const FIELD_ALIASES = array(
+		'alternative_reservation_url' => 'reservation_url',
 	);
 
 	const PRESERVED_FIELDS = array(
 		'image',
 		'menu',
-		'reservation_url',
 	);
 
 	const IDENTITY_FIELDS = array(
@@ -62,7 +68,11 @@ class Rundown_Merger {
 	 * @return array
 	 */
 	public function parse_payload( array $payload ) {
-		$allowed = array_merge( self::IDENTITY_FIELDS, array_keys( self::MANAGED_FIELDS ) );
+		$allowed = array_merge(
+			self::IDENTITY_FIELDS,
+			array_keys( self::MANAGED_FIELDS ),
+			array_keys( self::FIELD_ALIASES )
+		);
 
 		foreach ( array_keys( $payload ) as $key ) {
 			if ( in_array( $key, self::PRESERVED_FIELDS, true ) ) {
@@ -100,11 +110,16 @@ class Rundown_Merger {
 		$changes = array();
 
 		foreach ( self::MANAGED_FIELDS as $field => $type ) {
-			if ( ! array_key_exists( $field, $payload ) ) {
+			$source = $this->payload_source( $payload, $field );
+			if ( isset( $source['ok'] ) && ! $source['ok'] ) {
+				return $source;
+			}
+
+			if ( ! $source['present'] ) {
 				continue;
 			}
 
-			$parsed = $this->parse_managed_value( $field, $type, $payload[ $field ] );
+			$parsed = $this->parse_managed_value( $source['key'], $type, $source['value'] );
 			if ( isset( $parsed['ok'] ) && ! $parsed['ok'] ) {
 				return $parsed;
 			}
@@ -157,6 +172,49 @@ class Rundown_Merger {
 		return array(
 			'rundown'        => $rundown,
 			'updated_fields' => $updated,
+		);
+	}
+
+	/**
+	 * Read a managed field from the payload, including an Airtable alias.
+	 *
+	 * Changes are always keyed by the WordPress meta name.
+	 *
+	 * @param array  $payload Request body.
+	 * @param string $field   WordPress meta key.
+	 * @return array
+	 */
+	private function payload_source( array $payload, $field ) {
+		$alias   = array_search( $field, self::FIELD_ALIASES, true );
+		$has_key = array_key_exists( $field, $payload );
+		$has_alias = false !== $alias && array_key_exists( $alias, $payload );
+
+		if ( $has_key && $has_alias ) {
+			return $this->failure(
+				'bc_airtable_invalid_field',
+				sprintf( 'Send %s or %s, not both.', $alias, $field ),
+				(string) $alias
+			);
+		}
+
+		if ( $has_alias ) {
+			return array(
+				'present' => true,
+				'key'     => $alias,
+				'value'   => $payload[ $alias ],
+			);
+		}
+
+		if ( $has_key ) {
+			return array(
+				'present' => true,
+				'key'     => $field,
+				'value'   => $payload[ $field ],
+			);
+		}
+
+		return array(
+			'present' => false,
 		);
 	}
 
