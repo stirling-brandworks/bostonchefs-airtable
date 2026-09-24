@@ -132,13 +132,9 @@ class Rundown_Controller {
 			);
 		}
 
-		if ( ! has_term( $term_id, self::TAXONOMY, $restaurant_id ) ) {
-			return $this->error(
-				'bc_airtable_rundown_not_assigned',
-				'Restaurant is not assigned to this rundown.',
-				400,
-				'rundown_term_id'
-			);
+		$rundown_assigned = $this->ensure_rundown_assignment( $restaurant_id, $term_id );
+		if ( is_wp_error( $rundown_assigned ) ) {
+			return $rundown_assigned;
 		}
 
 		$existing = $this->read_rundown_meta( $restaurant_id, $term_id );
@@ -153,7 +149,7 @@ class Rundown_Controller {
 		$url            = $this->public_url( $post, $term );
 
 		if ( array() === $applied['updated_fields'] && ! $record_changed ) {
-			return $this->success( $restaurant_id, $term_id, $record_id, array(), $url );
+			return $this->success( $restaurant_id, $term_id, $record_id, array(), $url, $rundown_assigned );
 		}
 
 		if ( array() !== $applied['updated_fields'] ) {
@@ -170,7 +166,41 @@ class Rundown_Controller {
 			}
 		}
 
-		return $this->success( $restaurant_id, $term_id, $record_id, $applied['updated_fields'], $url );
+		return $this->success( $restaurant_id, $term_id, $record_id, $applied['updated_fields'], $url, $rundown_assigned );
+	}
+
+	/**
+	 * Assign the restaurant to the rundown when that term is missing.
+	 *
+	 * Other rundown terms already on the restaurant are left in place.
+	 * This never removes a rundown assignment.
+	 *
+	 * @param int $restaurant_id Restaurant post ID.
+	 * @param int $term_id       Rundown term ID.
+	 * @return bool|WP_Error True when this request assigned the term, false when it was already assigned.
+	 */
+	private function ensure_rundown_assignment( $restaurant_id, $term_id ) {
+		if ( has_term( $term_id, self::TAXONOMY, $restaurant_id ) ) {
+			return false;
+		}
+
+		$assigned = wp_set_object_terms(
+			$restaurant_id,
+			array( $term_id ),
+			self::TAXONOMY,
+			true
+		);
+
+		if ( is_wp_error( $assigned ) ) {
+			return $this->error(
+				'bc_airtable_rundown_assignment_failed',
+				'The restaurant could not be assigned to the rundown.',
+				500,
+				'rundown_term_id'
+			);
+		}
+
+		return true;
 	}
 
 	/**
@@ -231,22 +261,27 @@ class Rundown_Controller {
 	}
 
 	/**
-	 * @param int      $restaurant_id  Restaurant post ID.
-	 * @param int      $term_id        Rundown term ID.
-	 * @param string   $record_id      Airtable record ID.
-	 * @param string[] $updated_fields Fields whose stored value changed.
-	 * @param string   $url            Public rundown URL for the Airtable WP URL field.
+	 * @param int      $restaurant_id    Restaurant post ID.
+	 * @param int      $term_id          Rundown term ID.
+	 * @param string   $record_id        Airtable record ID.
+	 * @param string[] $updated_fields   Fields whose stored value changed.
+	 * @param string   $url              Public rundown URL for the Airtable WP URL field.
+	 * @param bool     $rundown_assigned Whether this request added the rundown term.
 	 * @return WP_REST_Response
 	 */
-	private function success( $restaurant_id, $term_id, $record_id, array $updated_fields, $url ) {
+	private function success( $restaurant_id, $term_id, $record_id, array $updated_fields, $url, $rundown_assigned ) {
 		return new WP_REST_Response(
 			array(
 				'success'            => true,
 				'restaurant_id'      => $restaurant_id,
 				'rundown_term_id'    => $term_id,
+				'rundown_assigned'   => (bool) $rundown_assigned,
 				'airtable_record_id' => $record_id,
 				'meta_key'           => $this->rundown_meta_key( $term_id ),
 				'updated_fields'     => $updated_fields,
+				'message'            => $rundown_assigned
+					? 'Restaurant assigned and Rundown successfully synced.'
+					: 'Rundown successfully synced.',
 				'url'                => $url,
 			),
 			200

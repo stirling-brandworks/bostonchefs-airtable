@@ -33,6 +33,8 @@ BostonChefs Airtable Integration Plugin
         ↓
 Validate Restaurant + Rundown
         ↓
+Assign the Rundown when the restaurant is not on it
+        ↓
 Read Existing WordPress Rundown Data
         ↓
 Merge Airtable-Managed Fields
@@ -52,7 +54,7 @@ Return Success / Error Response
 
 Authenticate as the `airtable-sync` user with an Application Password over HTTP Basic auth. Send `Content-Type: application/json`. That user has the `bc_sync_rundowns` capability only.
 
-Create the restaurant, the rundown term, and the restaurant-to-rundown assignment in WordPress before calling this endpoint. The request updates content on that existing assignment.
+Create the restaurant and the rundown term in WordPress before calling this endpoint. If the restaurant is not yet assigned to that rundown, the request assigns it and then writes the rundown content. That assignment is additive: other rundown terms on the restaurant stay in place, and this endpoint never removes a rundown assignment.
 
 ### Airtable-managed fields
 
@@ -108,12 +110,16 @@ Success:
   "success": true,
   "restaurant_id": 123,
   "rundown_term_id": 456,
+  "rundown_assigned": false,
   "airtable_record_id": "recABCDEFGHIJKLMN",
   "meta_key": "rundown_456",
   "updated_fields": ["title", "blurb", "availability", "price", "cta_text", "cta_url"],
+  "message": "Rundown successfully synced.",
   "url": "https://example.com/holiday/christmas/#restaurant-slug"
 }
 ```
+
+`rundown_assigned` is `true` when this request added the rundown term. The message is then `Restaurant assigned and Rundown successfully synced.`
 
 `url` is the public rundown page, with the restaurant slug as the anchor. Airtable stores it in WP URL.
 
