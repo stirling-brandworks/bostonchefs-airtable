@@ -62,6 +62,15 @@ class Rundown_Controller {
 	}
 
 	/**
+	 * Whether this request authenticated with an Application Password.
+	 *
+	 * @return bool
+	 */
+	public static function application_password_authenticated() {
+		return self::$application_password_authenticated;
+	}
+
+	/**
 	 * Require the airtable-sync capability over an Application Password.
 	 *
 	 * @return true|WP_Error
