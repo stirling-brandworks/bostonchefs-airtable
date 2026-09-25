@@ -17,6 +17,7 @@ require_once __DIR__ . '/includes/interface-rundown-sanitizer.php';
 require_once __DIR__ . '/includes/class-wp-rundown-sanitizer.php';
 require_once __DIR__ . '/includes/class-rundown-merger.php';
 require_once __DIR__ . '/includes/class-rundown-controller.php';
+require_once __DIR__ . '/includes/class-reference-controller.php';
 require_once __DIR__ . '/includes/class-integration-user.php';
 
 add_action(
@@ -35,5 +36,8 @@ add_action(
 		$merger     = new BostonChefs\Airtable\Rundown_Merger( new BostonChefs\Airtable\Wp_Rundown_Sanitizer() );
 		$controller = new BostonChefs\Airtable\Rundown_Controller( $merger );
 		$controller->register();
+
+		$reference = new BostonChefs\Airtable\Reference_Controller();
+		$reference->register();
 	}
 );
