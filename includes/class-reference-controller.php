@@ -87,7 +87,11 @@ class Reference_Controller {
 		foreach ( $restaurants as $restaurant ) {
 			$data[] = array(
 				'id'   => $restaurant->ID,
-				'name' => get_the_title( $restaurant ),
+				'name' => html_entity_decode(
+					get_the_title( $restaurant ),
+					ENT_QUOTES,
+					get_bloginfo( 'charset' )
+				),
 				'url'  => get_permalink( $restaurant ),
 			);
 		}
