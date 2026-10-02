@@ -86,17 +86,43 @@ class Reference_Controller {
 
 		foreach ( $restaurants as $restaurant ) {
 			$data[] = array(
-				'id'   => $restaurant->ID,
-				'name' => html_entity_decode(
-					get_the_title( $restaurant ),
-					ENT_QUOTES,
-					get_bloginfo( 'charset' )
-				),
-				'url'  => get_permalink( $restaurant ),
+				'id'      => $restaurant->ID,
+				'name'    => $this->decode_text( get_the_title( $restaurant ) ),
+				'url'     => get_permalink( $restaurant ),
+				'content' => $this->paragraph_text( $restaurant->post_content ),
 			);
 		}
 
 		return new WP_REST_Response( $data, 200 );
+	}
+
+	/**
+	 * Plain paragraph text from the restaurant Content field.
+	 *
+	 * Block markup and HTML are removed. Paragraph and line breaks are kept.
+	 *
+	 * @param string $content Raw post_content.
+	 * @return string
+	 */
+	private function paragraph_text( $content ) {
+		$content = strip_shortcodes( (string) $content );
+		$content = preg_replace( '/<!--.*?-->/s', '', $content );
+		$content = preg_replace( '/<\s*br\s*\/?\s*>/i', "\n", $content );
+		$content = preg_replace( '/<\/\s*(p|div|li|h[1-6])\s*>/i', "\n\n", $content );
+		$content = wp_strip_all_tags( $content );
+		$content = $this->decode_text( $content );
+		$content = preg_replace( "/[ \t]+\n/", "\n", $content );
+		$content = preg_replace( "/\n{3,}/", "\n\n", $content );
+
+		return trim( $content );
+	}
+
+	/**
+	 * @param string $text Text that may contain HTML entities.
+	 * @return string
+	 */
+	private function decode_text( $text ) {
+		return html_entity_decode( (string) $text, ENT_QUOTES, get_bloginfo( 'charset' ) );
 	}
 
 	/**
