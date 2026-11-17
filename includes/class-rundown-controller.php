@@ -141,6 +141,19 @@ class Rundown_Controller {
 			);
 		}
 
+		// An archived rundown is a closed year. Checked before any write, so
+		// nothing changes on the restaurant.
+		$archived = Rundown_Status::archived_sync_error( $term_id, $term->name );
+		if ( null !== $archived ) {
+			return $this->error(
+				$archived['code'],
+				$archived['message'],
+				409,
+				'rundown_term_id',
+				array( 'current_rundown_id' => $archived['current_rundown_id'] )
+			);
+		}
+
 		$rundown_assigned = $this->ensure_rundown_assignment( $restaurant_id, $term_id );
 		if ( is_wp_error( $rundown_assigned ) ) {
 			return $rundown_assigned;
@@ -338,16 +351,17 @@ class Rundown_Controller {
 	 * @param string      $message Error message.
 	 * @param int         $status  HTTP status.
 	 * @param string|null $field   Payload key related to the error.
+	 * @param array       $extra   More values for the error's data object.
 	 * @return WP_Error
 	 */
-	private function error( $code, $message, $status, $field = null ) {
+	private function error( $code, $message, $status, $field = null, array $extra = array() ) {
 		$data = array( 'status' => $status );
 
 		if ( null !== $field && '' !== $field ) {
 			$data['field'] = $field;
 		}
 
-		return new WP_Error( $code, $message, $data );
+		return new WP_Error( $code, $message, array_merge( $data, $extra ) );
 	}
 
 	/**

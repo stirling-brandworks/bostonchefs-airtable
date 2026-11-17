@@ -131,6 +131,62 @@ Success:
 
 Errors use the WordPress REST error shape (`code`, `message`, `data.status`). `data.field` names the payload key when the failure belongs to one field. Airtable stores `message` in WP Sync Error.
 
+### Archived rundowns
+
+The theme's **Archive & Start New Year** copies a rundown into an archived term, such as "Valentine's Day 2026", and empties the live rundown. An archived rundown is a closed year, so a sync to one is refused before anything is written:
+
+```json
+{
+  "code": "bc_airtable_rundown_archived",
+  "message": "Valentine's Day 2026 is an archived rundown and cannot be changed. Sync to the current rundown (term ID 214) instead.",
+  "data": { "status": 409, "field": "rundown_term_id", "current_rundown_id": 214 }
+}
+```
+
+Point the Airtable item at the current rundown and sync again.
+
+---
+
+## Reference endpoints
+
+Same authentication as the sync endpoint. Both return a JSON array.
+
+### `GET /wp-json/bostonchefs/v1/restaurants`
+
+Published restaurants, ordered by name: `id`, `name`, `url`, `content`.
+
+### `GET /wp-json/bostonchefs/v1/rundown-terms`
+
+Every rundown term, including empty and archived ones, ordered by name.
+
+| Field | Value |
+| --- | --- |
+| `id` | Rundown term ID |
+| `name` | Rundown name, HTML entities decoded |
+| `slug` | Rundown slug |
+| `status` | `current`, or `archived` for a past year |
+| `year` | Year the rundown holds. On a current rundown, the year being built. `null` until set |
+| `current_rundown_id` | On an archived rundown, the term ID of the live rundown it came from. Otherwise `null` |
+| `type` | `holiday`, `feature`, or `standard`, from the rundown's template |
+| `restaurant_count` | Published restaurants on the rundown |
+| `url` | Public rundown page. `null` for archived rundowns, which are not public |
+
+```json
+{
+  "id": 214,
+  "name": "Valentine's Day",
+  "slug": "valentines-day-boston",
+  "status": "current",
+  "year": 2027,
+  "current_rundown_id": null,
+  "type": "holiday",
+  "restaurant_count": 104,
+  "url": "https://www.bostonchefs.com/holiday/valentines-day-boston/"
+}
+```
+
+Without the Boston Chefs theme's archive code, every rundown is `current` with a `null` year.
+
 ---
 
 ## WordPress user

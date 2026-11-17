@@ -8,7 +8,6 @@
 namespace BostonChefs\Airtable;
 
 use WP_Error;
-use WP_REST_Request;
 use WP_REST_Response;
 use WP_REST_Server;
 
@@ -18,7 +17,7 @@ class Reference_Controller {
 	const TAXONOMY  = 'rundown';
 
 	/**
-	 * Register the reference routes, including the temporary rundown export.
+	 * Register the reference routes.
 	 */
 	public function register() {
 		register_rest_route(
@@ -37,16 +36,6 @@ class Reference_Controller {
 			array(
 				'methods'             => WP_REST_Server::READABLE,
 				'callback'            => array( $this, 'get_rundown_terms' ),
-				'permission_callback' => array( $this, 'permissions_check' ),
-			)
-		);
-
-		register_rest_route(
-			'bostonchefs/v1',
-			'/rundown-entries/(?P<term_id>\d+)',
-			array(
-				'methods'             => WP_REST_Server::READABLE,
-				'callback'            => array( $this, 'get_rundown_entries' ),
 				'permission_callback' => array( $this, 'permissions_check' ),
 			)
 		);
@@ -139,6 +128,9 @@ class Reference_Controller {
 	/**
 	 * Rundown terms, including empty ones, ordered by name.
 	 *
+	 * Archived years are listed with status "archived" so Airtable can keep
+	 * them apart from the rundowns editors are building now.
+	 *
 	 * @return WP_REST_Response|WP_Error
 	 */
 	public function get_rundown_terms() {
@@ -158,126 +150,39 @@ class Reference_Controller {
 		$data = array();
 
 		foreach ( $terms as $term ) {
-			$data[] = array(
-				'id'   => $term->term_id,
-				'name' => $term->name,
-				'slug' => $term->slug,
-			);
+			$data[] = $this->describe_rundown( $term );
 		}
 
 		return new WP_REST_Response( $data, 200 );
 	}
 
 	/**
-	 * Temporary export of one rundown term for Airtable seeding.
+	 * One rundown term as Airtable reads it.
 	 *
-	 * @param WP_REST_Request $request Incoming request.
-	 * @return WP_REST_Response|WP_Error
-	 */
-	public function get_rundown_entries( WP_REST_Request $request ) {
-		$term_id = absint( $request['term_id'] );
-		$term    = get_term( $term_id, self::TAXONOMY );
-
-		if ( ! $term || is_wp_error( $term ) ) {
-			return new WP_Error(
-				'bc_airtable_invalid_rundown',
-				'Rundown term not found.',
-				array( 'status' => 404 )
-			);
-		}
-
-		$restaurants = get_posts(
-			array(
-				'post_type'      => self::POST_TYPE,
-				'post_status'    => array( 'publish', 'draft', 'private' ),
-				'posts_per_page' => -1,
-				'orderby'        => 'title',
-				'order'          => 'ASC',
-				'tax_query'      => array(
-					array(
-						'taxonomy' => self::TAXONOMY,
-						'field'    => 'term_id',
-						'terms'    => $term_id,
-					),
-				),
-			)
-		);
-
-		$data = array();
-
-		foreach ( $restaurants as $restaurant ) {
-			$rundown = $this->read_rundown_meta( $restaurant->ID, $term_id );
-
-			$data[] = array(
-				'restaurant_id'               => $restaurant->ID,
-				'restaurant_name'             => $this->decode_text( get_the_title( $restaurant ) ),
-				'rundown_term_id'             => $term_id,
-				'title'                       => $this->rundown_text( $rundown, 'title' ),
-				'blurb'                       => $this->rundown_text( $rundown, 'blurb' ),
-				'availability'                => $this->rundown_text( $rundown, 'availability' ),
-				'price'                       => $this->rundown_text( $rundown, 'price' ),
-				'cta_text'                    => $this->rundown_text( $rundown, 'cta_text' ),
-				'cta_url'                     => $this->rundown_text( $rundown, 'cta_url' ),
-				'alternative_reservation_url' => $this->reservation_url( $rundown ),
-				'show_reservation_url'        => ! empty( $rundown['show_reservation_url'] ),
-			);
-		}
-
-		return new WP_REST_Response( $data, 200 );
-	}
-
-	/**
-	 * Read rundown meta, unpacking a legacy double-serialized string when present.
-	 *
-	 * @param int $restaurant_id Restaurant post ID.
-	 * @param int $term_id       Rundown term ID.
+	 * @param \WP_Term $term Rundown term.
 	 * @return array
 	 */
-	private function read_rundown_meta( $restaurant_id, $term_id ) {
-		$existing = get_post_meta( $restaurant_id, 'rundown_' . $term_id, true );
+	private function describe_rundown( $term ) {
+		$term_id = (int) $term->term_id;
+		$status  = Rundown_Status::status( $term_id );
 
-		if ( is_string( $existing ) && '' !== $existing ) {
-			$decoded = maybe_unserialize( $existing );
-			if ( is_array( $decoded ) ) {
-				$existing = $decoded;
-			}
+		// Archived rundowns return a 404 to the public, so they have no page to link.
+		$url = null;
+		if ( Rundown_Status::CURRENT === $status ) {
+			$link = get_term_link( $term, self::TAXONOMY );
+			$url  = is_wp_error( $link ) ? null : $link;
 		}
 
-		if ( ! is_array( $existing ) ) {
-			return array();
-		}
-
-		return $existing;
-	}
-
-	/**
-	 * Reservation links are stored as reservation_url.
-	 *
-	 * @param array $rundown Rundown meta.
-	 * @return string
-	 */
-	private function reservation_url( array $rundown ) {
-		if ( isset( $rundown['reservation_url'] ) ) {
-			return $this->decode_text( $rundown['reservation_url'] );
-		}
-
-		if ( isset( $rundown['alternative_reservation_url'] ) ) {
-			return $this->decode_text( $rundown['alternative_reservation_url'] );
-		}
-
-		return '';
-	}
-
-	/**
-	 * @param array  $rundown Rundown meta.
-	 * @param string $key     Meta key.
-	 * @return string
-	 */
-	private function rundown_text( array $rundown, $key ) {
-		if ( ! isset( $rundown[ $key ] ) || null === $rundown[ $key ] ) {
-			return '';
-		}
-
-		return $this->decode_text( $rundown[ $key ] );
+		return array(
+			'id'                 => $term_id,
+			'name'               => $this->decode_text( $term->name ),
+			'slug'               => $term->slug,
+			'status'             => $status,
+			'year'               => Rundown_Status::year( $term_id ),
+			'current_rundown_id' => Rundown_Status::current_rundown_id( $term_id ),
+			'type'               => Rundown_Status::type( $term ),
+			'restaurant_count'   => (int) $term->count,
+			'url'                => $url,
+		);
 	}
 }

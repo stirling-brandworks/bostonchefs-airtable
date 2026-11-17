@@ -2,7 +2,7 @@
 /**
  * Plugin Name: BostonChefs Airtable Integration
  * Description: Syncs BostonChefs Airtable Rundown data into WordPress Restaurant Rundowns through a secure custom REST API.
- * Version: 1.0.0
+ * Version: 1.1.0
  * Author: Stirling Brandworks
  * Text Domain: bostonchefs-airtable
  *
@@ -16,6 +16,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 require_once __DIR__ . '/includes/interface-rundown-sanitizer.php';
 require_once __DIR__ . '/includes/class-wp-rundown-sanitizer.php';
 require_once __DIR__ . '/includes/class-rundown-merger.php';
+require_once __DIR__ . '/includes/class-rundown-status.php';
 require_once __DIR__ . '/includes/class-rundown-controller.php';
 require_once __DIR__ . '/includes/class-reference-controller.php';
 require_once __DIR__ . '/includes/class-integration-user.php';
